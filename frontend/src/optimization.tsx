@@ -6,7 +6,11 @@ import { compute } from './bo/client'
 import { OBJECTIVES } from './bo/experiment'
 import type { Observation, Snapshot } from './bo/experiment'
 
-export function Optimization({ schedule, onPreview }: { schedule: Schedule; onPreview: (s: Schedule) => void }) {
+export function Optimization({ schedule, onPreview, visible }: {
+  schedule: Schedule
+  onPreview: (s: Schedule) => void
+  visible: boolean
+}) {
   const [experiment, setExperiment] = useState<Snapshot>()
   const [selected, setSelected] = useState<number>()
   const [budget, setBudget] = useState('20')
@@ -88,11 +92,11 @@ export function Optimization({ schedule, onPreview }: { schedule: Schedule; onPr
         <button type="button" disabled={busy || complete || !experiment} onClick={() => void act(false)}>Step</button>
         <button type="button" disabled={busy || complete || !experiment} onClick={() => void act(true)}>Run</button>
         <button type="button" disabled={!running} onClick={stop}>Stop</button>
-        {experiment && <span role="status">{history.length} / {experiment.budget} evaluations{complete ? ' Â· Complete' : busy ? ' Â· Evaluating' : ''}</span>}
+        {experiment && <span role="status">{history.length} / {experiment.budget} evaluations{complete ? ' · Complete' : busy ? ' · Evaluating' : ''}</span>}
       </div>
     </form>
     {error && <p className="errors" role="alert">{error}</p>}
-    {current && inspected && best && <>
+    {visible && inspected && best && <>
       <div className="lab-grid">
         <div>
           <h3>Convergence</h3>
@@ -115,13 +119,13 @@ export function Optimization({ schedule, onPreview }: { schedule: Schedule; onPr
         <div>
           <h3>Evaluation {inspected.iteration} scores</h3>
           {OBJECTIVES.map(key => <div className="score" key={key}>
-            <label htmlFor={'score-' + key}>{key}{key === 'distraction' ? ' â†“' : ' â†‘'}</label>
+            <label htmlFor={'score-' + key}>{key}{key === 'distraction' ? ' ↓' : ' ↑'}</label>
             <meter id={'score-' + key} min={0} max={1} value={inspected.objectives[key]} />
             <span>{inspected.objectives[key].toFixed(2)}</span>
           </div>)}
           <p className="lab-note">Weighted utility {inspected.score.toFixed(3)}</p>
           <p className="lab-note">{inspected.prediction
-            ? 'GP prediction ' + inspected.prediction.mean.toFixed(3) + ' Â· SD ' + inspected.prediction.deviation.toFixed(3) + ' Â· Expected improvement ' + inspected.prediction.improvement.toFixed(4)
+            ? 'GP prediction ' + inspected.prediction.mean.toFixed(3) + ' · SD ' + inspected.prediction.deviation.toFixed(3) + ' · Expected improvement ' + inspected.prediction.improvement.toFixed(4)
             : inspected.iteration === 1 ? 'Starting schedule from the preview.' : 'Initial space-filling sample.'}</p>
           <button onClick={() => onPreview(inspected.schedule)}>Preview evaluation</button>
           <button className="restore" onClick={() => onPreview(best.schedule)}>Restore best schedule</button>
@@ -130,7 +134,7 @@ export function Optimization({ schedule, onPreview }: { schedule: Schedule; onPr
       <h3>Candidate comparison</h3>
       <div className="table-scroll"><table><thead><tr><th>Parameter</th><th>Initial</th><th>Current</th><th>Best observed</th></tr></thead><tbody>
         {FIELDS.map(({ key, label, unit }) => <tr key={key}><th scope="row">{label}</th>
-          {[history[0], current, best].map((row, column) => <td key={column}>{unit === 'time' ? clock(row.schedule[key]) : row.schedule[key] + unit}</td>)}
+          {[history[0], inspected, best].map((row, column) => <td key={column}>{unit === 'time' ? clock(row.schedule[key]) : row.schedule[key] + unit}</td>)}
         </tr>)}
       </tbody></table></div>
       <h3>Optimization history</h3>

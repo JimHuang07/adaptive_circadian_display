@@ -153,11 +153,11 @@ function App() {
           <section className="card controls" aria-labelledby="controls-title">
             <div className="section-head"><h2 id="controls-title">Schedule parameters</h2><button onClick={() => { update(DEFAULTS); setPreset(PRESETS[0]) }}>Reset defaults</button></div>
             <div className="fields">
-              {FIELDS.map(({ key, label, min, max, unit, hint }) => <label className="field" key={key}>
-                <span>{label}<output>{unit === 'time' ? clock(draft[key]) : draft[key] + unit}</output></span>
-                <input type="range" min={min} max={max} value={draft[key]} aria-valuetext={unit === 'time' ? clock(draft[key]) : draft[key] + unit} aria-invalid={errors.some(e => e.keys.includes(key))} onChange={e => update({ ...draft, [key]: e.target.valueAsNumber })} />
-                <small>{hint}</small>
-              </label>)}
+              {FIELDS.map(({ key, label, min, max, unit, hint }) => <div className="field" key={key}>
+                <span><label htmlFor={'parameter-' + key}>{label}</label><output>{unit === 'time' ? clock(draft[key]) : draft[key] + unit}</output></span>
+                <input id={'parameter-' + key} type="range" min={min} max={max} value={draft[key]} aria-describedby={'hint-' + key} aria-valuetext={unit === 'time' ? clock(draft[key]) : draft[key] + unit} aria-invalid={errors.some(e => e.keys.includes(key))} onChange={e => update({ ...draft, [key]: e.target.valueAsNumber })} />
+                <small id={'hint-' + key}>{hint}</small>
+              </div>)}
             </div>
             <div className="routine">
               {(['wake', 'bed'] as const).map(key => <label key={key}>{key === 'wake' ? 'Wake-up time' : 'Bedtime'}
@@ -175,7 +175,7 @@ function App() {
         <button aria-pressed={mode === 'synthetic'} onClick={() => setMode('synthetic')}>Synthetic evaluation</button>
         <button aria-pressed={mode === 'human'} onClick={() => setMode('human')}>Human feedback</button>
       </div>
-      <div hidden={mode !== 'synthetic'}><Optimization schedule={schedule} onPreview={preview} /></div>
+      <div hidden={mode !== 'synthetic'}><Optimization schedule={schedule} onPreview={preview} visible={mode === 'synthetic'} /></div>
       {mode === 'human' && <Feedback key={schedule.wake + ':' + schedule.bed} schedule={schedule}
         canRate={!errors.length && preset === PRESETS[0]} onPreview={preview} />}
     </main>
