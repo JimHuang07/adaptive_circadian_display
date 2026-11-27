@@ -1,10 +1,39 @@
 # Adaptive Circadian Display
 
-Explore how phone saturation changes across a day, then optimize a schedule for a synthetic student or use your own feedback. The app runs entirely in the browser.
+Adaptive Circadian Display is a browser-based research prototype for exploring how phone screen saturation could change throughout the day. Adjust a schedule, see it applied to a simulated phone, and try Bayesian optimization with either a synthetic student profile or your own ratings.
 
-## Develop locally
+[Open the live demo](https://jimhuang07.github.io/adaptive_circadian_display/)
 
-Use Node.js 22.18 or newer. From the project directory:
+## Why we built it
+
+Color can make a social feed more engaging, but it also helps people distinguish events on a calendar and scan a task list. A fixed grayscale setting applies the same trade-off throughout the day. We built this prototype to explore whether a personalized schedule can keep color where it helps and reduce it where someone prefers a quieter display.
+
+The app changes the saturation of the simulated phone on the page. Synthetic scores demonstrate optimizer behavior, and human feedback records how a schedule felt in the preview. Measuring changes in real phone use, productivity, or sleep would require a separate study.
+
+## Try it
+
+1. **Explore a day.** Switch between the phone's home screen, social feed, and productivity view. Drag the time slider, click the schedule chart, or play the simulated day.
+2. **Compare schedules.** Try full color, always grayscale, fixed bedtime grayscale, or adaptive saturation. Overlay a baseline and adjust morning, daytime, and nighttime saturation, transition timing, and duration around your wake-up and bedtime.
+3. **Run a synthetic experiment.** Start with seed `42`, a budget of `20`, `5` initial samples, and noise `0.03`. Press **Run** to compare Bayesian optimization with random search. Inspect a candidate's scores and parameters, load it into the phone, or restore the best observed schedule.
+4. **Give your own feedback.** Switch to **Human feedback** and rate calmness, perceived focus, usability, and visual comfort from 1 to 10. Optionally record social media minutes and unnecessary phone openings. Request another schedule, preview it, and export the saved evaluations as JSON.
+
+Wake-up must leave 15 minutes before the morning transition, and the evening transition must finish by bedtime. A bedtime earlier on the clock than wake-up is treated as occurring the next day. Invalid edits keep the last valid schedule visible.
+
+## How the optimizer works
+
+The synthetic experiment evaluates the starting schedule, then uses seeded Halton samples to explore the feasible parameter space. It fits a Gaussian process to the observed scores and ranks 256 feasible candidates per Bayesian step using expected improvement. The random-search comparison uses the same initial observations, evaluation budget, and paired noise draws. The synthetic score balances lower distraction against higher calmness, productivity, and usability using adjustable weights.
+
+In human mode, the first recommendations explore different schedules. After three distinct schedules have ratings for the same wake-up and bedtime, the optimizer uses expected improvement to suggest the next one. It weights the four ratings equally and uses optional usage observations as reference data.
+
+## Architecture and data
+
+- [`frontend/`](frontend/) contains the React and TypeScript app, the phone preview, and the Recharts dashboard. A Web Worker runs the optimizer so the interface stays responsive.
+- [`backend/`](backend/) contains the original Python reference implementation. The live demo runs without a server.
+- The last valid schedule and human evaluations are stored in LocalStorage for the current browser and site. Human history and JSON export are scoped to the current wake-up and bedtime. Synthetic runs stay in memory until you refresh. Existing SQLite records are kept separately and are not imported automatically.
+
+## Run locally
+
+Use Node.js 22.18 or newer. From the project directory, run the following commands and open the URL printed by Vite.
 
 ```sh
 cd frontend
@@ -12,33 +41,15 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. To build the static app, run `npm run build`. To preview a repository-subpath build locally, use:
+To verify the TypeScript optimizer against the Python reference, install Python 3.10 or newer and run `npm test` from `frontend`. The tests compare seeded draws, predictions, acquisition values, optimization histories, and human recommendations. Set `PYTHON` if your interpreter uses a different command.
+
+## Build and deploy
+
+Run `npm run build` from `frontend` to create `frontend/dist`. Use the following commands to preview the build at the repository subpath.
 
 ```sh
-npm run build -- --base /adaptive-circadian-display/
-npx vite preview --configLoader runner --base /adaptive-circadian-display/
+npm run build -- --base /adaptive_circadian_display/
+npx vite preview --configLoader runner --base /adaptive_circadian_display/
 ```
 
-Open the preview URL with `/adaptive-circadian-display/` at the end. The build output is in `frontend/dist`.
-
-## Deploy to GitHub Pages
-
-1. Push the project to a GitHub repository, including `.github/workflows/pages.yml` and `frontend/package-lock.json`.
-2. In **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
-3. Push to the default branch or run **Deploy GitHub Pages** manually from the Actions tab. Open the deployment URL shown in the successful workflow run.
-
-The workflow tests the port, builds with the base path reported by GitHub Pages, and publishes only `frontend/dist`. The same workflow supports repository subpaths and root sites. See [GitHub's Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) and [Vite's Pages deployment guide](https://vite.dev/guide/static-deploy#github-pages).
-
-## Explore and evaluate schedules
-
-Choose a phone screen, scrub the time slider or click the chart, and play the simulated day at 1×, 2×, or 4×. Pick a preset or overlay a baseline. Wake-up must leave 15 minutes before the morning transition, and the evening transition must finish by bedtime. Bedtimes earlier than wake-up occur the next day. Invalid edits leave the last valid schedule visible.
-
-In **Synthetic evaluation**, start an experiment, step through it or run the full budget, and inspect the convergence curves. The worker starts with the preview schedule and seeded, shifted Halton samples. It fits a Gaussian process on six normalized parameters using Cholesky factorization with diagonal jitter and evaluates expected improvement over 256 feasible candidates at each Bayesian step. Random search shares the initial observations, budget, and noise draws. Synthetic runs are held in memory for the current page session.
-
-In **Human feedback**, rate four subjective criteria from 1 to 10 and optionally log daily usage observations. Request an exploratory schedule or, after rating three distinct schedules for the same wake-up and bedtime, a Bayesian recommendation. Load recommendations or past evaluations into the phone preview and export the routine's ratings as JSON. The optimizer uses the four ratings equally. Usage observations are saved for reference. Measuring changes in actual phone use or productivity requires a field study.
-
-The last valid adaptive schedule and human evaluations are saved in this browser's LocalStorage, scoped to the app's address. Export ratings before changing browsers or clearing site data. The original Python backend and any SQLite records remain available as references. SQLite records are not imported into browser storage automatically.
-
-## Verify against Python
-
-Run `npm test` from `frontend` with Python 3.10 or newer on your path (or set `PYTHON` to the interpreter path). The tests compare seeded random draws, GP predictions, acquisition values, synthetic scores, full optimization runs, and human recommendations directly with the original Python code. Python is used for verification only. The static application requires no Python runtime or server.
+The [GitHub Pages workflow](.github/workflows/pages.yml) tests the app and builds it using the Pages base path. To deploy a fork, choose **GitHub Actions** under **Settings → Pages → Build and deployment**, then push to the default branch or run **Deploy GitHub Pages** manually from the Actions tab.
